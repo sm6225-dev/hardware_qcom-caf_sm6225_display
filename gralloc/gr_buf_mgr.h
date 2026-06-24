@@ -63,6 +63,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <cutils/properties.h>
 
 #include "gr_allocator.h"
 #include "gr_buf_descriptor.h"
@@ -120,6 +121,9 @@ class BufferManager {
     int ion_handle_main = -1;
     int ion_handle_meta = -1;
 
+    // Lock count to ensure nested lock/unlock situation are handled correctly
+    int lock_count = 0;
+
     Buffer() = delete;
     explicit Buffer(const private_handle_t *h, int ih_main = -1, int ih_meta = -1)
         : handle(h), ion_handle_main(ih_main), ion_handle_meta(ih_meta) {}
@@ -140,6 +144,8 @@ class BufferManager {
   uint64_t allocated_ = 0;
   uint64_t kAllocThreshold = (uint64_t)2*1024*1024*1024;
   uint64_t kMemoryOffset = 50*1024*1024;
+  char target_board_platform_[PROP_VALUE_MAX] = {'\0'};
+  bool isCameraRecLowResolutionFormatOverride_ = false;
   struct {
     const char *kDumpFile = "/data/misc/wmtrace/bufferdump.txt";
     uint64_t position = 0;

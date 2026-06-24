@@ -2777,6 +2777,11 @@ int HWCSession::HandleBuiltInDisplays() {
 
 int HWCSession::HandlePluggableDisplays(bool delay_hotplug) {
   SCOPE_LOCK(pluggable_handler_lock_);
+  if (null_display_mode_) {
+    DLOGW("Skipped pluggable display handling in null-display mode");
+    return 0;
+  }
+
   if (null_display_active_) {
     SCOPE_LOCK(locker_[HWC_DISPLAY_PRIMARY]);
     auto &hwc_display = hwc_display_[HWC_DISPLAY_PRIMARY];
@@ -3564,7 +3569,8 @@ int32_t HWCSession::GetDisplayConnectionType(hwc2_display_t display,
     return HWC2_ERROR_BAD_DISPLAY;
   }
   *type = HwcDisplayConnectionType::EXTERNAL;
-  if (hwc_display_[display]->GetDisplayClass() == DISPLAY_CLASS_BUILTIN) {
+  if (hwc_display_[display]->GetDisplayClass() == DISPLAY_CLASS_BUILTIN ||
+      (display == HWC_DISPLAY_PRIMARY && pluggable_is_primary_)) {
     *type = HwcDisplayConnectionType::INTERNAL;
   }
 
