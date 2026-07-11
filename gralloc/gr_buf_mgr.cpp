@@ -114,8 +114,9 @@ static uint64_t getMetaDataSize(uint64_t reserved_region_size) {
 }
 
 static void unmapAndReset(private_handle_t *handle) {
-  uint64_t reserved_region_size = handle->reserved_size;
   if (private_handle_t::validate(handle) == 0 && handle->base_metadata) {
+    auto metadata = reinterpret_cast<MetaData_t *>(handle->base_metadata);
+    uint64_t reserved_region_size = metadata->reservedSize;
     munmap(reinterpret_cast<void *>(handle->base_metadata), getMetaDataSize(reserved_region_size));
     handle->base_metadata = 0;
   }
@@ -132,8 +133,7 @@ static int validateAndMap(private_handle_t *handle) {
   }
 
   if (!handle->base_metadata) {
-    uint64_t reserved_region_size = handle->reserved_size;
-    uint64_t size = getMetaDataSize(reserved_region_size);
+    uint64_t size = getMetaDataSize(0);
     void *base = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, handle->fd_metadata, 0);
     if (base == reinterpret_cast<void *>(MAP_FAILED)) {
       ALOGE("%s: metadata mmap failed - handle:%p fd: %d err: %s", __func__, handle,
@@ -141,6 +141,22 @@ static int validateAndMap(private_handle_t *handle) {
       return -1;
     }
     handle->base_metadata = (uintptr_t)base;
+#ifdef METADATA_V2
+    auto metadata = reinterpret_cast<MetaData_t *>(handle->base_metadata);
+    if (metadata->reservedSize) {
+      uint64_t reserved_region_size = metadata->reservedSize;
+      munmap(reinterpret_cast<void *>(handle->base_metadata), size);
+      handle->base_metadata = 0;
+      size = getMetaDataSize(reserved_region_size);
+      void *new_base = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, handle->fd_metadata, 0);
+      if (new_base == reinterpret_cast<void *>(MAP_FAILED)) {
+        ALOGE("%s: metadata mmap failed - handle:%p fd: %d err: %s", __func__, handle,
+              handle->fd_metadata, strerror(errno));
+        return -1;
+      }
+      handle->base_metadata = (uintptr_t)new_base;
+    }
+#endif
   }
   return 0;
 }
@@ -888,7 +904,7 @@ Error BufferManager::FreeBuffer(std::shared_ptr<Buffer> buf) {
     return Error::BAD_BUFFER;
   }
 
-  auto meta_size = getMetaDataSize(hnd->reserved_size);
+  auto meta_size = getMetaDataSize(buf->reserved_size);
 
   if (allocator_->FreeBuffer(reinterpret_cast<void *>(hnd->base), hnd->size, hnd->offset, hnd->fd,
                              buf->ion_handle_main) != 0) {
@@ -932,7 +948,8 @@ void BufferManager::RegisterHandleLocked(const private_handle_t *hnd, int ion_ha
 
   if (hnd->base_metadata) {
 #ifdef METADATA_V2
-    buffer->reserved_size = hnd->reserved_size;
+    auto metadata = reinterpret_cast<MetaData_t *>(hnd->base_metadata);
+    buffer->reserved_size = metadata->reservedSize;
     if (buffer->reserved_size > 0) {
       buffer->reserved_region_ptr =
           reinterpret_cast<void *>(hnd->base_metadata + sizeof(MetaData_t));
@@ -940,6 +957,7 @@ void BufferManager::RegisterHandleLocked(const private_handle_t *hnd, int ion_ha
       buffer->reserved_region_ptr = nullptr;
     }
 #else
+    auto metadata = reinterpret_cast<MetaData_t *>(hnd->base_metadata);
     buffer->reserved_region_ptr = reinterpret_cast<void *>(&(metadata->reservedRegion.data));
     buffer->reserved_size = metadata->reservedRegion.size;
 #endif
@@ -1249,7 +1267,7 @@ Error BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_h
       data.fd, e_data.fd, INT(flags), INT(alignedw), INT(alignedh), descriptor.GetWidth(),
       descriptor.GetHeight(), format, buffer_type, data.size, usage);
 
-  hnd->reserved_size = descriptor.GetReservedSize();
+
   hnd->id = ++next_id_;
   hnd->base = 0;
   hnd->base_metadata = 0;
