@@ -124,7 +124,9 @@ namespace gralloc {
 
 class CameraInfo {
  public:
-  bool IsCameraUtilsPresent() { return libcamera_utils_ != nullptr; }
+  bool IsCameraUtilsPresent() {
+    return libcamera_utils_ != nullptr && LINK_camera_get_stride_in_bytes != nullptr;
+  }
 
   int GetUBWCInfo(int format, bool *is_Supported, bool *is_PI, int *version);
 
