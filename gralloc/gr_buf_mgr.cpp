@@ -1261,11 +1261,14 @@ Error BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_h
 
   flags = GetHandleFlags(format, usage);
   flags |= data.alloc_type;
+  
+  int unaligned_w = descriptor.GetWidth();
+  int unaligned_h = descriptor.GetHeight();
 
   // Create handle
   private_handle_t *hnd = new private_handle_t(
-      data.fd, e_data.fd, INT(flags), INT(alignedw), INT(alignedh), descriptor.GetWidth(),
-      descriptor.GetHeight(), format, buffer_type, data.size, usage);
+      data.fd, e_data.fd, INT(flags), INT(alignedw), INT(alignedh), unaligned_w,
+      unaligned_h, format, buffer_type, data.size, usage);
 
 
   hnd->id = ++next_id_;
