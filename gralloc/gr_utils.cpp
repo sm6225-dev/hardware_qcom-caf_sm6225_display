@@ -610,9 +610,13 @@ void GetYuvSPPlaneInfo(const BufferInfo &info, int format, uint32_t width, uint3
   switch (format) {
     case HAL_PIXEL_FORMAT_YCbCr_420_SP:
     case HAL_PIXEL_FORMAT_YCrCb_420_SP:
-    case HAL_PIXEL_FORMAT_NV21_ZSL:
       c_size = (width * height) / 2 + 1;
       c_height = height >> 1;
+      break;
+    case HAL_PIXEL_FORMAT_NV21_ZSL:
+      y_size = y_stride * unaligned_height;
+      c_size = (width * unaligned_height) / 2 + 1;
+      c_height = unaligned_height >> 1;
       break;
     case HAL_PIXEL_FORMAT_YCbCr_422_SP:
     case HAL_PIXEL_FORMAT_YCrCb_422_SP:
@@ -1248,7 +1252,9 @@ int GetAlignedWidthAndHeight(const BufferInfo &info, unsigned int *alignedw,
       mmm_color_format = (usage & GRALLOC_USAGE_PRIVATE_HEIF) ? MMM_COLOR_FMT_NV12_512 :
                                                                 MMM_COLOR_FMT_NV12;
       aligned_w = INT(MMM_COLOR_FMT_Y_STRIDE(mmm_color_format, width));
-      aligned_h = INT(MMM_COLOR_FMT_Y_SCANLINES(mmm_color_format, height));
+      // Use the original (unaligned) height so hnd->height matches where the
+      // BASS camera component places the UV plane (stride * unaligned_height).
+      aligned_h = height;
       break;
     case HAL_PIXEL_FORMAT_YCrCb_420_SP_VENUS:
     case HAL_PIXEL_FORMAT_NV21_ENCODEABLE:
@@ -1495,22 +1501,20 @@ int GetImplDefinedFormat(uint64_t usage, int format) {
       } else if (format == HAL_PIXEL_FORMAT_YCbCr_420_888) {
         gr_format = HAL_PIXEL_FORMAT_YCbCr_420_SP_VENUS;
       } else {
-        gr_format = HAL_PIXEL_FORMAT_NV12_ENCODEABLE;  // NV12
+        gr_format = HAL_PIXEL_FORMAT_YCbCr_420_SP_VENUS;  // NV12
       }
     } else if (usage & BufferUsage::CAMERA_INPUT) {
       if (usage & BufferUsage::CAMERA_OUTPUT) {
         // Assumed ZSL if both producer and consumer camera flags set
-        gr_format = HAL_PIXEL_FORMAT_NV21_ZSL;  // NV21
+        gr_format = HAL_PIXEL_FORMAT_YCbCr_420_SP_VENUS;  // Changed from NV21_ZSL to NV12 to fix 1080p centering bug
       } else {
         gr_format = HAL_PIXEL_FORMAT_YCrCb_420_SP;  // NV21
       }
     } else if (usage & BufferUsage::CAMERA_OUTPUT) {
-      if (format == HAL_PIXEL_FORMAT_YCbCr_420_888) {
-        if ((usage & BufferUsage::PROTECTED) && (!CanAllocateZSLForSecureCamera())) {
-          gr_format = HAL_PIXEL_FORMAT_YCrCb_420_SP;  // NV21
-        } else {
-          gr_format = HAL_PIXEL_FORMAT_NV21_ZSL;  // NV21
-        }
+      if ((format == HAL_PIXEL_FORMAT_YCbCr_420_888) && 
+          (usage & BufferUsage::PROTECTED) && 
+          (!CanAllocateZSLForSecureCamera())) {
+        gr_format = HAL_PIXEL_FORMAT_YCrCb_420_SP;  // NV21
       } else {
         gr_format = HAL_PIXEL_FORMAT_YCbCr_420_SP_VENUS;  // NV12 preview
       }
