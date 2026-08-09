@@ -636,6 +636,7 @@ void GetYuvSPPlaneInfo(const BufferInfo &info, int format, uint32_t width, uint3
     case HAL_PIXEL_FORMAT_NV12_ENCODEABLE:
       mmm_color_format = (info.usage & GRALLOC_USAGE_PRIVATE_HEIF) ? MMM_COLOR_FMT_NV12_512 :
                                                                      MMM_COLOR_FMT_NV12;
+      y_size = y_stride * INT(MMM_COLOR_FMT_Y_SCANLINES(mmm_color_format, height));
       c_height = MMM_COLOR_FMT_UV_SCANLINES(mmm_color_format, height);
       c_size = c_stride * c_height;
       break;
@@ -1524,7 +1525,7 @@ int GetImplDefinedFormat(uint64_t usage, int format) {
     } else if (format == HAL_PIXEL_FORMAT_YCbCr_420_888) {
       // If no other usage flags are detected, default the
       // flexible YUV format to NV21_ZSL
-      gr_format = HAL_PIXEL_FORMAT_NV21_ZSL;
+      gr_format = HAL_PIXEL_FORMAT_YCbCr_420_SP_VENUS;
     }
   }
 
