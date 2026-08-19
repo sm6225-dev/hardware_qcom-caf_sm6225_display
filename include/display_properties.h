@@ -180,6 +180,7 @@
 #define WINDOW_RECT_PROP                     DISPLAY_PROP("window_rect")
 #define DISABLE_IDLE_TIME_HDR                DISPLAY_PROP("disable_idle_time_hdr")
 #define DISABLE_IDLE_TIME_VIDEO              DISPLAY_PROP("disable_idle_time_video")
+#define OVERRIDE_DOZE_MODE_PROP              DISPLAY_PROP("override_doze_mode")
 #define DISABLE_CACHE_MANAGER                DISPLAY_PROP("disable_cache_manager")
 // Add all other.properties above
 // End of property

@@ -189,6 +189,11 @@ int HWCDisplayBuiltIn::Init() {
   DebugHandler::Get()->GetProperty(DISABLE_DYNAMIC_FPS, &value);
   disable_dyn_fps_ = (value == 1);
 
+  value = 0;
+  DebugHandler::Get()->GetProperty(OVERRIDE_DOZE_MODE_PROP, &value);
+  override_doze_mode_ = (value == 1);
+  DLOGI("override_doze_mode: %d", override_doze_mode_);
+
   uint32_t config_index = 0;
   GetActiveDisplayConfig(&config_index);
   DisplayConfigVariableInfo attr = {};
